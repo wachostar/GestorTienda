@@ -1,0 +1,197 @@
+Imports System.Drawing
+
+Public Class FormCompras
+    Inherits Form
+    
+    Private dgvCompras As DataGridView
+    Private txtSKU As TextBox
+    Private txtCantidad As TextBox
+    Private txtCostoUnitario As TextBox
+    Private txtProveedor As TextBox
+    Private cmbEstado As ComboBox
+    Private btnAgregar As Button
+    Private btnActualizar As Button
+    Private btnLimpiar As Button
+    Private compraSeleccionada As Compra
+    
+    Sub New()
+        InitializeComponent()
+        CargarCompras()
+    End Sub
+    
+    Private Sub InitializeComponent()
+        Me.Text = "📥 Gestión de Compras"
+        Me.Size = New Size(1200, 600)
+        Me.StartPosition = FormStartPosition.CenterScreen
+        Me.BackColor = Color.FromArgb(240, 240, 240)
+        
+        dgvCompras = New DataGridView With {
+            .Dock = DockStyle.Top,
+            .Height = 250,
+            .BackgroundColor = Color.White,
+            .AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+        }
+        dgvCompras.AllowUserToAddRows = False
+        AddHandler dgvCompras.CellClick, AddressOf dgvCompras_CellClick
+        Me.Controls.Add(dgvCompras)
+        
+        Dim pnlEntrada As New Panel With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.White,
+            .Padding = New Padding(20)
+        }
+        
+        Dim lblSKU As New Label With {.Text = "SKU:", .Location = New Point(10, 10), .AutoSize = True}
+        txtSKU = New TextBox With {.Location = New Point(120, 10), .Width = 150}
+        
+        Dim lblCant As New Label With {.Text = "Cantidad:", .Location = New Point(10, 40), .AutoSize = True}
+        txtCantidad = New TextBox With {.Location = New Point(120, 40), .Width = 150}
+        
+        Dim lblCosto As New Label With {.Text = "Costo Unitario:", .Location = New Point(10, 70), .AutoSize = True}
+        txtCostoUnitario = New TextBox With {.Location = New Point(120, 70), .Width = 150}
+        
+        Dim lblProveedor As New Label With {.Text = "Proveedor:", .Location = New Point(300, 10), .AutoSize = True}
+        txtProveedor = New TextBox With {.Location = New Point(410, 10), .Width = 150}
+        
+        Dim lblEstado As New Label With {.Text = "Estado:", .Location = New Point(300, 40), .AutoSize = True}
+        cmbEstado = New ComboBox With {.Location = New Point(410, 40), .Width = 150}
+        cmbEstado.Items.AddRange(New String() {"Pendiente", "Recibida", "Rechazada"})
+        cmbEstado.SelectedIndex = 0
+        
+        btnAgregar = New Button With {.Text = "➕ Agregar", .Location = New Point(600, 10), .Width = 100, .BackColor = Color.Green, .ForeColor = Color.White}
+        btnActualizar = New Button With {.Text = "✏️ Actualizar", .Location = New Point(720, 10), .Width = 100, .BackColor = Color.Blue, .ForeColor = Color.White}
+        btnLimpiar = New Button With {.Text = "🔄 Limpiar", .Location = New Point(840, 10), .Width = 100, .BackColor = Color.Orange, .ForeColor = Color.White}
+        
+        pnlEntrada.Controls.Add(lblSKU)
+        pnlEntrada.Controls.Add(txtSKU)
+        pnlEntrada.Controls.Add(lblCant)
+        pnlEntrada.Controls.Add(txtCantidad)
+        pnlEntrada.Controls.Add(lblCosto)
+        pnlEntrada.Controls.Add(txtCostoUnitario)
+        pnlEntrada.Controls.Add(lblProveedor)
+        pnlEntrada.Controls.Add(txtProveedor)
+        pnlEntrada.Controls.Add(lblEstado)
+        pnlEntrada.Controls.Add(cmbEstado)
+        pnlEntrada.Controls.Add(btnAgregar)
+        pnlEntrada.Controls.Add(btnActualizar)
+        pnlEntrada.Controls.Add(btnLimpiar)
+        
+        Me.Controls.Add(pnlEntrada)
+        
+        AddHandler btnAgregar.Click, AddressOf AgregarCompra
+        AddHandler btnActualizar.Click, AddressOf ActualizarEstado
+        AddHandler btnLimpiar.Click, AddressOf LimpiarFormulario
+    End Sub
+    
+    Private Sub CargarCompras()
+        dgvCompras.DataSource = Nothing
+        Dim compras = CompraDAL.ObtenerTodas()
+        
+        Dim tabla As New DataTable()
+        tabla.Columns.Add("ID")
+        tabla.Columns.Add("Compra")
+        tabla.Columns.Add("SKU")
+        tabla.Columns.Add("Producto")
+        tabla.Columns.Add("Cantidad")
+        tabla.Columns.Add("Costo Unit.")
+        tabla.Columns.Add("Total")
+        tabla.Columns.Add("Proveedor")
+        tabla.Columns.Add("Estado")
+        tabla.Columns.Add("Fecha")
+        
+        For Each compra In compras
+            tabla.Rows.Add(compra.Id, compra.NumeroCompra, compra.SKU, compra.NombreProducto, compra.Cantidad,
+                          compra.CostoUnitario, compra.CostoTotal, compra.Proveedor, compra.Estado, compra.Fecha.ToString("yyyy-MM-dd"))
+        Next
+        
+        dgvCompras.DataSource = tabla
+    End Sub
+    
+    Private Sub dgvCompras_CellClick(sender As Object, e As DataGridViewCellEventArgs)
+        If e.RowIndex >= 0 Then
+            Dim fila = dgvCompras.Rows(e.RowIndex)
+            txtSKU.Text = fila.Cells("SKU").Value.ToString()
+            txtCantidad.Text = fila.Cells("Cantidad").Value.ToString()
+            txtCostoUnitario.Text = fila.Cells("Costo Unit.").Value.ToString()
+            txtProveedor.Text = fila.Cells("Proveedor").Value.ToString()
+            cmbEstado.SelectedItem = fila.Cells("Estado").Value.ToString()
+            compraSeleccionada = CompraDAL.ObtenerTodas().FirstOrDefault(Function(c) c.Id = CInt(fila.Cells("ID").Value))
+        End If
+    End Sub
+    
+    Private Sub AgregarCompra(sender As Object, e As EventArgs)
+        If txtSKU.Text = "" Then
+            MessageBox.Show("SKU es obligatorio", "Validación")
+            Return
+        End If
+        
+        Try
+            Dim producto = ProductoDAL.ObtenerPorSKU(txtSKU.Text)
+            If producto Is Nothing Then
+                MessageBox.Show("Producto no encontrado", "Error")
+                Return
+            End If
+            
+            Dim cantidad = CInt(txtCantidad.Text)
+            Dim costoUnitario = CDec(txtCostoUnitario.Text)
+            
+            Dim compra As New Compra With {
+                .NumeroCompra = CompraDAL.GenerarNumeroCompra(),
+                .ProductoId = producto.Id,
+                .SKU = producto.SKU,
+                .NombreProducto = producto.Nombre,
+                .Cantidad = cantidad,
+                .CostoUnitario = costoUnitario,
+                .CostoTotal = cantidad * costoUnitario,
+                .Proveedor = txtProveedor.Text,
+                .Estado = cmbEstado.SelectedItem.ToString()
+            }
+            
+            CompraDAL.Agregar(compra)
+            
+            If compra.Estado = "Recibida" Then
+                producto.CantidadStock += cantidad
+                ProductoDAL.Actualizar(producto)
+            End If
+            
+            MessageBox.Show("Compra registrada exitosamente", "Éxito")
+            CargarCompras()
+            LimpiarFormulario(Nothing, Nothing)
+        Catch ex As Exception
+            MessageBox.Show("Error: " & ex.Message)
+        End Try
+    End Sub
+    
+    Private Sub ActualizarEstado(sender As Object, e As EventArgs)
+        If compraSeleccionada Is Nothing Then
+            MessageBox.Show("Selecciona una compra", "Validación")
+            Return
+        End If
+        
+        Try
+            CompraDAL.ActualizarEstado(compraSeleccionada.Id, cmbEstado.SelectedItem.ToString())
+            
+            If cmbEstado.SelectedItem.ToString() = "Recibida" Then
+                Dim producto = ProductoDAL.ObtenerPorSKU(compraSeleccionada.SKU)
+                producto.CantidadStock += compraSeleccionada.Cantidad
+                ProductoDAL.Actualizar(producto)
+            End If
+            
+            MessageBox.Show("Estado actualizado", "Éxito")
+            CargarCompras()
+            LimpiarFormulario(Nothing, Nothing)
+        Catch ex As Exception
+            MessageBox.Show("Error: " & ex.Message)
+        End Try
+    End Sub
+    
+    Private Sub LimpiarFormulario(sender As Object, e As EventArgs)
+        txtSKU.Clear()
+        txtCantidad.Clear()
+        txtCostoUnitario.Clear()
+        txtProveedor.Clear()
+        cmbEstado.SelectedIndex = 0
+        compraSeleccionada = Nothing
+    End Sub
+    
+End Class
