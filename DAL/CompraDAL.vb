@@ -39,5 +39,4 @@ Public Class CompraDAL
         Return list
     End Function
 
-    ' ... other methods omitted for brevity in this upload
 End Class
