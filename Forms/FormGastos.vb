@@ -1,116 +1,4 @@
 Imports System.Drawing
 
 Public Class FormGastos
-    Inherits Form
-    
-    Private dgvGastos As DataGridView
-    Private cmbTipo As ComboBox
-    Private txtDescripcion As TextBox
-    Private txtMonto As TextBox
-    Private btnAgregar As Button
-    Private btnLimpiar As Button
-    
-    Sub New()
-        InitializeComponent()
-        CargarGastos()
-    End Sub
-    
-    Private Sub InitializeComponent()
-        Me.Text = "💸 Control de Gastos"
-        Me.Size = New Size(1000, 600)
-        Me.StartPosition = FormStartPosition.CenterScreen
-        Me.BackColor = Color.FromArgb(240, 240, 240)
-        
-        dgvGastos = New DataGridView With {
-            .Dock = DockStyle.Top,
-            .Height = 300,
-            .BackgroundColor = Color.White,
-            .AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
-        }
-        dgvGastos.AllowUserToAddRows = False
-        Me.Controls.Add(dgvGastos)
-        
-        Dim pnlEntrada As New Panel With {
-            .Dock = DockStyle.Fill,
-            .BackColor = Color.White,
-            .Padding = New Padding(20)
-        }
-        
-        Dim lblTipo As New Label With {.Text = "Tipo:", .Location = New Point(10, 10), .AutoSize = True}
-        cmbTipo = New ComboBox With {.Location = New Point(120, 10), .Width = 200}
-        cmbTipo.Items.AddRange(New String() {"Luz", "Agua", "Alquiler", "Internet", "Mantenimiento", "Otro"})
-        cmbTipo.SelectedIndex = 0
-        
-        Dim lblDesc As New Label With {.Text = "Descripción:", .Location = New Point(10, 50), .AutoSize = True}
-        txtDescripcion = New TextBox With {.Location = New Point(120, 50), .Width = 400, .Height = 60, .Multiline = True}
-        
-        Dim lblMonto As New Label With {.Text = "Monto:", .Location = New Point(10, 120), .AutoSize = True}
-        txtMonto = New TextBox With {.Location = New Point(120, 120), .Width = 150}
-        
-        btnAgregar = New Button With {.Text = "➕ Agregar", .Location = New Point(300, 120), .Width = 100, .BackColor = Color.Green, .ForeColor = Color.White}
-        btnLimpiar = New Button With {.Text = "🔄 Limpiar", .Location = New Point(420, 120), .Width = 100, .BackColor = Color.Orange, .ForeColor = Color.White}
-        
-        pnlEntrada.Controls.Add(lblTipo)
-        pnlEntrada.Controls.Add(cmbTipo)
-        pnlEntrada.Controls.Add(lblDesc)
-        pnlEntrada.Controls.Add(txtDescripcion)
-        pnlEntrada.Controls.Add(lblMonto)
-        pnlEntrada.Controls.Add(txtMonto)
-        pnlEntrada.Controls.Add(btnAgregar)
-        pnlEntrada.Controls.Add(btnLimpiar)
-        
-        Me.Controls.Add(pnlEntrada)
-        
-        AddHandler btnAgregar.Click, AddressOf AgregarGasto
-        AddHandler btnLimpiar.Click, AddressOf LimpiarFormulario
-    End Sub
-    
-    Private Sub CargarGastos()
-        dgvGastos.DataSource = Nothing
-        Dim gastos = GastoDAL.ObtenerTodos()
-        
-        Dim tabla As New DataTable()
-        tabla.Columns.Add("Gasto")
-        tabla.Columns.Add("Tipo")
-        tabla.Columns.Add("Descripción")
-        tabla.Columns.Add("Monto")
-        tabla.Columns.Add("Fecha")
-        
-        For Each gasto In gastos
-            tabla.Rows.Add(gasto.NumeroGasto, gasto.Tipo, gasto.Descripcion, gasto.Monto, gasto.Fecha.ToString("yyyy-MM-dd HH:mm"))
-        Next
-        
-        dgvGastos.DataSource = tabla
-    End Sub
-    
-    Private Sub AgregarGasto(sender As Object, e As EventArgs)
-        If txtMonto.Text = "" Then
-            MessageBox.Show("Monto es obligatorio", "Validación")
-            Return
-        End If
-        
-        Try
-            Dim gasto As New Gasto With {
-                .NumeroGasto = GastoDAL.GenerarNumeroGasto(),
-                .Tipo = cmbTipo.SelectedItem.ToString(),
-                .Descripcion = txtDescripcion.Text,
-                .Monto = CDec(txtMonto.Text),
-                .Fecha = DateTime.Now
-            }
-            
-            GastoDAL.Agregar(gasto)
-            MessageBox.Show("Gasto registrado", "Éxito")
-            CargarGastos()
-            LimpiarFormulario(Nothing, Nothing)
-        Catch ex As Exception
-            MessageBox.Show("Error: " & ex.Message)
-        End Try
-    End Sub
-    
-    Private Sub LimpiarFormulario(sender As Object, e As EventArgs)
-        txtDescripcion.Clear()
-        txtMonto.Clear()
-        cmbTipo.SelectedIndex = 0
-    End Sub
-    
-End Class
+    Inherits Form        Private dgvGastos As DataGridView    Private cmbTipo As ComboBox    Private txtDescripcion As TextBox    Private txtMonto As TextBox    Private btnAgregar As Button    Private btnLimpiar As Button        Sub New()        InitializeComponent()        CargarGastos()    End Sub        Private Sub InitializeComponent()        Me.Text = "💸 Control de Gastos"        Me.Size = New Size(1000, 600)        Me.StartPosition = FormStartPosition.CenterScreen        Me.BackColor = Color.FromArgb(240, 240, 240)                dgvGastos = New DataGridView With {            .Dock = DockStyle.Top,            .Height = 300,            .BackgroundColor = Color.White,            .AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill        }        dgvGastos.AllowUserToAddRows = False        Me.Controls.Add(dgvGastos)                Dim pnlEntrada As New Panel With {            .Dock = DockStyle.Fill,            .BackColor = Color.White,            .Padding = New Padding(20)        }                Dim lblTipo As New Label With {.Text = "Tipo:", .Location = New Point(10, 10), .AutoSize = True}        cmbTipo = New ComboBox With {.Location = New Point(120, 10), .Width = 200}        cmbTipo.Items.AddRange(New String() {"Luz", "Agua", "Alquiler", "Internet", "Mantenimiento", "Otro"})        cmbTipo.SelectedIndex = 0                Dim lblDesc As New Label With {.Text = "Descripción:", .Location = New Point(10, 50), .AutoSize = True}        txtDescripcion = New TextBox With {.Location = New Point(120, 50), .Width = 400, .Height = 60, .Multiline = True}                Dim lblMonto As New Label With {.Text = "Monto:", .Location = New Point(10, 120), .AutoSize = True}        txtMonto = New TextBox With {.Location = New Point(120, 120), .Width = 150}                btnAgregar = New Button With {.Text = "➕ Agregar", .Location = New Point(300, 120), .Width = 100, .BackColor = Color.Green, .ForeColor = Color.White}        btnLimpiar = New Button With {.Text = "🔄 Limpiar", .Location = New Point(420, 120), .Width = 100, .BackColor = Color.Orange, .ForeColor = Color.White}                pnlEntrada.Controls.Add(lblTipo)        pnlEntrada.Controls.Add(cmbTipo)        pnlEntrada.Controls.Add(lblDesc)        pnlEntrada.Controls.Add(txtDescripcion)        pnlEntrada.Controls.Add(lblMonto)        pnlEntrada.Controls.Add(txtMonto)        pnlEntrada.Controls.Add(btnAgregar)        pnlEntrada.Controls.Add(btnLimpiar)                Me.Controls.Add(pnlEntrada)                AddHandler btnAgregar.Click, AddressOf AgregarGasto        AddHandler btnLimpiar.Click, AddressOf LimpiarFormulario    End Sub        Private Sub CargarGastos()        dgvGastos.DataSource = Nothing        Dim gastos = GastoDAL.ObtenerTodos()                Dim tabla As New DataTable()        tabla.Columns.Add("Gasto")        tabla.Columns.Add("Tipo")        tabla.Columns.Add("Descripción")        tabla.Columns.Add("Monto")        tabla.Columns.Add("Fecha")                For Each gasto In gastos            tabla.Rows.Add(gasto.NumeroGasto, gasto.Tipo, gasto.Descripcion, gasto.Monto, gasto.Fecha.ToString("yyyy-MM-dd HH:mm"))        Next                dgvGastos.DataSource = tabla    End Sub        Private Sub AgregarGasto(sender As Object, e As EventArgs)        If txtMonto.Text = "" Then            MessageBox.Show("Monto es obligatorio", "Validación")            Return        End If                Dim montoVal As Decimal        If Not Decimal.TryParse(txtMonto.Text.Trim(), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, montoVal) Then            MessageBox.Show("Monto inválido", "Validación")            Return        End If                Try            Dim gasto As New Gasto With {                .NumeroGasto = GastoDAL.GenerarNumeroGasto(),                .Tipo = cmbTipo.SelectedItem.ToString(),                .Descripcion = txtDescripcion.Text.Trim(),                .Monto = montoVal,                .Fecha = DateTime.Now            }                        GastoDAL.Agregar(gasto)            MessageBox.Show("Gasto registrado", "Éxito")            CargarGastos()            LimpiarFormulario(Nothing, Nothing)        Catch ex As Exception            MessageBox.Show("Error: " & ex.Message)        End Try    End Sub        Private Sub LimpiarFormulario(sender As Object, e As EventArgs)        txtDescripcion.Clear()        txtMonto.Clear()        cmbTipo.SelectedIndex = 0    End Sub    End Class
