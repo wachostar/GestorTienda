@@ -52,8 +52,8 @@ Aplicación de escritorio en VB.NET para gestionar inventario, ventas y gastos d
 ## 🚀 Instalación y Configuración
 
 ### Requisitos
-- .NET 6.0 o superior
-- Visual Studio 2022 (opcional pero recomendado)
+- .NET 9.0 (net9.0-windows) o superior
+- Visual Studio 2022/2023 (opcional pero recomendado)
 
 ### Pasos de Instalación
 
@@ -75,7 +75,7 @@ Aplicación de escritorio en VB.NET para gestionar inventario, ventas y gastos d
 
 4. **Ejecutar la aplicación**
    ```bash
-   dotnet run
+   dotnet run --project GestorTienda.vbproj
    ```
 
 ---
@@ -113,11 +113,11 @@ GestorTienda/
 
 ## 💾 Base de Datos
 
-La aplicación utiliza **SQLite** para almacenar los datos. La base de datos se crea automáticamente en la carpeta del proyecto.
+La aplicación utiliza **SQLite** para almacenar los datos. La base de datos se crea automáticamente la primera vez que se ejecuta la aplicación y se guarda como `GestorTienda.db` en la carpeta donde se ejecuta la aplicación (Application.StartupPath).
 
 ### Tablas
 - **Productos**: Información de productos
-- **Transacciones**: Registro de ventas
+- **Transacciones**: Registro de ventas (una fila por producto vendido en una transacción)
 - **Compras**: Compras a proveedores
 - **Gastos**: Control de gastos
 - **MovimientosInventario**: Historial de movimientos
