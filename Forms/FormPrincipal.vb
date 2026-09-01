@@ -1,113 +1,5 @@
 Imports System.Drawing
+Imports System.Windows.Forms
 
 Public Class FormPrincipal
-    Inherits Form
-    
-    Private btnProductos As Button
-    Private btnPuntodeVenta As Button
-    Private btnReportes As Button
-    Private btnCompras As Button
-    Private btnGastos As Button
-    Private btnInventario As Button
-    Private lblTitulo As Label
-    Private pnlMenu As Panel
-    
-    Sub New()
-        ConfiguracionDB.InicializarBD()
-        InitializeComponent()
-    End Sub
-    
-    Private Sub InitializeComponent()
-        Me.Text = "GESTOR DE TIENDA - ABARROTES"
-        Me.Size = New Size(1000, 700)
-        Me.StartPosition = FormStartPosition.CenterScreen
-        Me.BackColor = Color.FromArgb(240, 240, 240)
-        
-        pnlMenu = New Panel With {
-            .Dock = DockStyle.Top,
-            .Height = 80,
-            .BackColor = Color.FromArgb(50, 50, 50)
-        }
-        
-        lblTitulo = New Label With {
-            .Text = "📦 GESTOR DE INVENTARIO - PUNTO DE VENTA",
-            .ForeColor = Color.White,
-            .Font = New Font("Arial", 18, FontStyle.Bold),
-            .AutoSize = False,
-            .Left = 20,
-            .Top = 20,
-            .Width = 600
-        }
-        pnlMenu.Controls.Add(lblTitulo)
-        Me.Controls.Add(pnlMenu)
-        
-        btnProductos = CrearBoton("📦 PRODUCTOS", 20, 120, Color.FromArgb(41, 128, 185))
-        btnPuntodeVenta = CrearBoton("💳 PUNTO DE VENTA", 220, 120, Color.FromArgb(46, 204, 113))
-        btnReportes = CrearBoton("📊 REPORTES", 420, 120, Color.FromArgb(155, 89, 182))
-        btnCompras = CrearBoton("📥 COMPRAS", 620, 120, Color.FromArgb(230, 126, 34))
-        btnGastos = CrearBoton("💸 GASTOS", 820, 120, Color.FromArgb(192, 57, 43))
-        btnInventario = CrearBoton("📈 INVENTARIO", 20, 220, Color.FromArgb(52, 152, 219))
-        
-        AddHandler btnProductos.Click, AddressOf AbrirProductos
-        AddHandler btnPuntodeVenta.Click, AddressOf AbrirPuntodeVenta
-        AddHandler btnReportes.Click, AddressOf AbrirReportes
-        AddHandler btnCompras.Click, AddressOf AbrirCompras
-        AddHandler btnGastos.Click, AddressOf AbrirGastos
-        AddHandler btnInventario.Click, AddressOf AbrirInventario
-    End Sub
-    
-    Private Function CrearBoton(texto As String, left As Integer, top As Integer, color As Color) As Button
-        Dim btn As New Button With {
-            .Text = texto,
-            .Left = left,
-            .Top = top,
-            .Width = 180,
-            .Height = 80,
-            .BackColor = color,
-            .ForeColor = Color.White,
-            .Font = New Font("Arial", 12, FontStyle.Bold),
-            .FlatStyle = FlatStyle.Flat,
-            .Cursor = Cursors.Hand
-        }
-        btn.FlatAppearance.BorderSize = 0
-        Me.Controls.Add(btn)
-        Return btn
-    End Function
-    
-    Private Sub AbrirProductos(sender As Object, e As EventArgs)
-        Dim frm As New FormProductos()
-        frm.ShowDialog()
-    End Sub
-    
-    Private Sub AbrirPuntodeVenta(sender As Object, e As EventArgs)
-        Dim frm As New FormPuntodeVenta()
-        frm.ShowDialog()
-    End Sub
-    
-    Private Sub AbrirReportes(sender As Object, e As EventArgs)
-        Dim frm As New FormReportes()
-        frm.ShowDialog()
-    End Sub
-    
-    Private Sub AbrirCompras(sender As Object, e As EventArgs)
-        Dim frm As New FormCompras()
-        frm.ShowDialog()
-    End Sub
-    
-    Private Sub AbrirGastos(sender As Object, e As EventArgs)
-        Dim frm As New FormGastos()
-        frm.ShowDialog()
-    End Sub
-    
-    Private Sub AbrirInventario(sender As Object, e As EventArgs)
-        Dim frm As New FormInventario()
-        frm.ShowDialog()
-    End Sub
-    
-    <STAThread()>
-    Shared Sub Main()
-        Application.EnableVisualStyles()
-        Application.Run(New FormPrincipal())
-    End Sub
-    
-End Class
+    Inherits Form        Private btnProductos As Button    Private btnPuntodeVenta As Button    Private btnReportes As Button    Private btnCompras As Button    Private btnGastos As Button    Private btnInventario As Button    Private lblTitulo As Label    Private pnlMenu As Panel        Sub New()        InitializeComponent()    End Sub        Private Sub InitializeComponent()        Me.Text = "GESTOR DE TIENDA - ABARROTES"        Me.Size = New Size(1000, 700)        Me.StartPosition = FormStartPosition.CenterScreen        Me.BackColor = Color.FromArgb(240, 240, 240)                pnlMenu = New Panel With {            .Dock = DockStyle.Top,            .Height = 80,            .BackColor = Color.FromArgb(50, 50, 50)        }                lblTitulo = New Label With {            .Text = "📦 GESTOR DE INVENTARIO - PUNTO DE VENTA",            .ForeColor = Color.White,            .Font = New Font("Arial", 18, FontStyle.Bold),            .AutoSize = False,            .Left = 20,            .Top = 20,            .Width = 600        }        pnlMenu.Controls.Add(lblTitulo)        Me.Controls.Add(pnlMenu)                btnProductos = CrearBoton("📦 PRODUCTOS", 20, 120, Color.FromArgb(41, 128, 185))        btnPuntodeVenta = CrearBoton("💳 PUNTO DE VENTA", 220, 120, Color.FromArgb(46, 204, 113))        btnReportes = CrearBoton("📊 REPORTES", 420, 120, Color.FromArgb(155, 89, 182))        btnCompras = CrearBoton("📥 COMPRAS", 620, 120, Color.FromArgb(230, 126, 34))        btnGastos = CrearBoton("💸 GASTOS", 820, 120, Color.FromArgb(192, 57, 43))        btnInventario = CrearBoton("📈 INVENTARIO", 20, 220, Color.FromArgb(52, 152, 219))                AddHandler btnProductos.Click, AddressOf AbrirProductos        AddHandler btnPuntodeVenta.Click, AddressOf AbrirPuntodeVenta        AddHandler btnReportes.Click, AddressOf AbrirReportes        AddHandler btnCompras.Click, AddressOf AbrirCompras        AddHandler btnGastos.Click, AddressOf AbrirGastos        AddHandler btnInventario.Click, AddressOf AbrirInventario    End Sub        Private Function CrearBoton(texto As String, left As Integer, top As Integer, color As Color) As Button        Dim btn As New Button With {            .Text = texto,            .Left = left,            .Top = top,            .Width = 180,            .Height = 80,            .BackColor = color,            .ForeColor = Color.White,            .Font = New Font("Arial", 12, FontStyle.Bold),            .FlatStyle = FlatStyle.Flat,            .Cursor = Cursors.Hand        }        btn.FlatAppearance.BorderSize = 0        Me.Controls.Add(btn)        Return btn    End Function        Private Sub AbrirProductos(sender As Object, e As EventArgs)        Dim frm As New FormProductos()        frm.ShowDialog()    End Sub        Private Sub AbrirPuntodeVenta(sender As Object, e As EventArgs)        Dim frm As New FormPuntodeVenta()        frm.ShowDialog()    End Sub        Private Sub AbrirReportes(sender As Object, e As EventArgs)        Dim frm As New FormReportes()        frm.ShowDialog()    End Sub        Private Sub AbrirCompras(sender As Object, e As EventArgs)        Dim frm As New FormCompras()        frm.ShowDialog()    End Sub        Private Sub AbrirGastos(sender As Object, e As EventArgs)        Dim frm As New FormGastos()        frm.ShowDialog()    End Sub        Private Sub AbrirInventario(sender As Object, e As EventArgs)        Dim frm As New FormInventario()        frm.ShowDialog()    End Sub        <STAThread()>    Shared Sub Main()        Application.EnableVisualStyles()        Application.SetCompatibleTextRenderingDefault(False)        Try            ConfiguracionDB.InicializarBD()        Catch ex As Exception            MessageBox.Show("No se pudo inicializar la base de datos: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)            Return        End Try        Application.Run(New FormPrincipal())    End Sub    End Class
