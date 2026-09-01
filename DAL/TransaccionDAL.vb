@@ -1,4 +1,7 @@
+Imports System.Data
 Imports System.Data.SQLite
+Imports System.Threading
+Imports System.Globalization
 
 Public Class TransaccionDAL
     
@@ -79,5 +82,67 @@ Public Class TransaccionDAL
             End If
         End Using
     End Function
-    
+
+    ' Inserta varias transacciones (un solo ticket) y actualiza stocks de forma atómica
+    Public Shared Sub RegistrarVentaCompleta(items As List(Of Transaccion), montoPagado As Decimal)
+        If items Is Nothing OrElse items.Count = 0 Then Throw New ArgumentException("No hay items para registrar")
+
+        Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
+            conexion.Open()
+            Using trans = conexion.BeginTransaction()
+                Try
+                    ' Usar un mismo número de transacción para todo el ticket
+                    Dim numeroTicket As String = GenerarNumeroTransaccion()
+                    Dim fechaAhora As String = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+
+                    For Each item In items
+                        ' Verificar stock actual
+                        Using cmdCheck As New SQLiteCommand("SELECT CantidadStock FROM Productos WHERE UPPER(SKU) = @sku", conexion, trans)
+                            cmdCheck.Parameters.AddWithValue("@sku", item.SKU.Trim().ToUpperInvariant())
+                            Dim current = cmdCheck.ExecuteScalar()
+                            If current Is Nothing OrElse current Is DBNull.Value Then
+                                Throw New Exception($"Producto con SKU {item.SKU} no encontrado en stock")
+                            End If
+                            Dim stockActual As Integer = Convert.ToInt32(current)
+                            If stockActual < item.Cantidad Then
+                                Throw New Exception($"Stock insuficiente para SKU {item.SKU}. Disponible: {stockActual}, requerido: {item.Cantidad}")
+                            End If
+                        End Using
+
+                        ' Insertar transacción (detalle)
+                        Dim sqlInsert As String = "INSERT INTO Transacciones (NumeroTransaccion, Fecha, ProductoId, SKU, NombreProducto, Cantidad, PrecioUnitario, Total, GananciaTotal, Cambio, MontoPagado) VALUES (@num, @fecha, @pid, @sku, @nom, @cant, @pu, @tot, @gan, @cam, @mon)"
+                        Using cmdIns As New SQLiteCommand(sqlInsert, conexion, trans)
+                            cmdIns.Parameters.AddWithValue("@num", numeroTicket)
+                            cmdIns.Parameters.AddWithValue("@fecha", If(item.Fecha = DateTime.MinValue, fechaAhora, item.Fecha.ToString("yyyy-MM-dd HH:mm:ss")))
+                            cmdIns.Parameters.AddWithValue("@pid", item.ProductoId)
+                            cmdIns.Parameters.AddWithValue("@sku", item.SKU)
+                            cmdIns.Parameters.AddWithValue("@nom", item.NombreProducto)
+                            cmdIns.Parameters.AddWithValue("@cant", item.Cantidad)
+                            cmdIns.Parameters.AddWithValue("@pu", item.PrecioUnitario)
+                            cmdIns.Parameters.AddWithValue("@tot", item.Total)
+                            cmdIns.Parameters.AddWithValue("@gan", item.GananciaTotal)
+                            cmdIns.Parameters.AddWithValue("@cam", montoPagado - items.Sum(Function(i) i.Total))
+                            cmdIns.Parameters.AddWithValue("@mon", montoPagado)
+
+                            cmdIns.ExecuteNonQuery()
+                        End Using
+
+                        ' Actualizar stock
+                        Using cmdUpd As New SQLiteCommand("UPDATE Productos SET CantidadStock = CantidadStock - @cant WHERE UPPER(SKU) = @sku", conexion, trans)
+                            cmdUpd.Parameters.AddWithValue("@cant", item.Cantidad)
+                            cmdUpd.Parameters.AddWithValue("@sku", item.SKU.Trim().ToUpperInvariant())
+                            cmdUpd.ExecuteNonQuery()
+                        End Using
+                    Next
+
+                    trans.Commit()
+                Catch ex As Exception
+                    trans.Rollback()
+                    Throw
+                End Try
+            End Using
+            conexion.Close()
+        End Using
+    End Sub
+
 End Class

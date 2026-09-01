@@ -37,10 +37,12 @@ Public Class ProductoDAL
     Public Shared Function ObtenerPorSKU(sku As String) As Producto
         If String.IsNullOrWhiteSpace(sku) Then Return Nothing
 
+        Dim skuNorm As String = sku.Trim().ToUpperInvariant()
+
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
-            Using cmd As New SQLiteCommand("SELECT Id, SKU, Nombre, Descripcion, Categoria, CostoU, PrecioVenta, GananciaU, CantidadStock, FechaCreacion FROM Productos WHERE SKU = @sku LIMIT 1", conexion)
-                cmd.Parameters.AddWithValue("@sku", sku)
+            Using cmd As New SQLiteCommand("SELECT Id, SKU, Nombre, Descripcion, Categoria, CostoU, PrecioVenta, GananciaU, CantidadStock, FechaCreacion FROM Productos WHERE UPPER(SKU) = @sku LIMIT 1", conexion)
+                cmd.Parameters.AddWithValue("@sku", skuNorm)
                 Using reader = cmd.ExecuteReader()
                     If reader.Read() Then
                         Dim p As New Producto With {
@@ -65,6 +67,16 @@ Public Class ProductoDAL
     End Function
 
     Public Shared Sub Agregar(producto As Producto)
+        If producto Is Nothing Then Throw New ArgumentNullException(NameOf(producto))
+
+        ' Normalizar SKU a mayúsculas
+        producto.SKU = producto.SKU?.Trim().ToUpperInvariant()
+
+        ' Verificar duplicado
+        If ObtenerPorSKU(producto.SKU) IsNot Nothing Then
+            Throw New Exception("El SKU ya existe")
+        End If
+
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
             Using trans = conexion.BeginTransaction()
