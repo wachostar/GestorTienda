@@ -9,20 +9,26 @@ Public Class TransaccionDAL
     Public Shared Sub Agregar(transaccion As Transaccion)
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
-            Dim cmd As New SQLiteCommand("INSERT INTO Transacciones (NumeroTransaccion, ProductoId, SKU, NombreProducto, Cantidad, PrecioUnitario, Total, GananciaTotal, Cambio, MontoPagado) VALUES (@num, @pid, @sku, @nom, @cant, @pu, @tot, @gan, @cam, @mon)", conexion)
-            
-            cmd.Parameters.AddWithValue("@num", transaccion.NumeroTransaccion)
-            cmd.Parameters.AddWithValue("@pid", transaccion.ProductoId)
-            cmd.Parameters.AddWithValue("@sku", transaccion.SKU)
-            cmd.Parameters.AddWithValue("@nom", transaccion.NombreProducto)
-            cmd.Parameters.AddWithValue("@cant", transaccion.Cantidad)
-            cmd.Parameters.AddWithValue("@pu", transaccion.PrecioUnitario)
-            cmd.Parameters.AddWithValue("@tot", transaccion.Total)
-            cmd.Parameters.AddWithValue("@gan", transaccion.GananciaTotal)
-            cmd.Parameters.AddWithValue("@cam", transaccion.Cambio)
-            cmd.Parameters.AddWithValue("@mon", transaccion.MontoPagado)
-            
-            cmd.ExecuteNonQuery()
+            Using trans = conexion.BeginTransaction()
+                Dim sql As String = "INSERT INTO Transacciones (NumeroTransaccion, Fecha, ProductoId, SKU, NombreProducto, Cantidad, PrecioUnitario, Total, GananciaTotal, Cambio, MontoPagado) VALUES (@num, @fecha, @pid, @sku, @nom, @cant, @pu, @tot, @gan, @cam, @mon)"
+                Using cmd As New SQLiteCommand(sql, conexion, trans)
+                    cmd.Parameters.AddWithValue("@num", transaccion.NumeroTransaccion)
+                    cmd.Parameters.AddWithValue("@fecha", If(transaccion.Fecha = DateTime.MinValue, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), transaccion.Fecha.ToString("yyyy-MM-dd HH:mm:ss")))
+                    cmd.Parameters.AddWithValue("@pid", transaccion.ProductoId)
+                    cmd.Parameters.AddWithValue("@sku", transaccion.SKU)
+                    cmd.Parameters.AddWithValue("@nom", transaccion.NombreProducto)
+                    cmd.Parameters.AddWithValue("@cant", transaccion.Cantidad)
+                    cmd.Parameters.AddWithValue("@pu", transaccion.PrecioUnitario)
+                    cmd.Parameters.AddWithValue("@tot", transaccion.Total)
+                    cmd.Parameters.AddWithValue("@gan", transaccion.GananciaTotal)
+                    cmd.Parameters.AddWithValue("@cam", transaccion.Cambio)
+                    cmd.Parameters.AddWithValue("@mon", transaccion.MontoPagado)
+
+                    cmd.ExecuteNonQuery()
+                End Using
+                trans.Commit()
+            End Using
+            conexion.Close()
         End Using
     End Sub
     
@@ -31,7 +37,7 @@ Public Class TransaccionDAL
         
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
-            Dim cmd As New SQLiteCommand("SELECT * FROM Transacciones WHERE DATE(Fecha) BETWEEN @fi AND @ff ORDER BY Fecha DESC", conexion)
+            Dim cmd As New SQLiteCommand("SELECT Id, NumeroTransaccion, Fecha, ProductoId, SKU, NombreProducto, Cantidad, PrecioUnitario, Total, GananciaTotal, Cambio, MontoPagado FROM Transacciones WHERE DATE(Fecha) BETWEEN @fi AND @ff ORDER BY Fecha DESC", conexion)
             cmd.Parameters.AddWithValue("@fi", fechaInicio.ToString("yyyy-MM-dd"))
             cmd.Parameters.AddWithValue("@ff", fechaFin.ToString("yyyy-MM-dd"))
             Dim reader = cmd.ExecuteReader()
@@ -40,16 +46,16 @@ Public Class TransaccionDAL
                 Dim transaccion As New Transaccion With {
                     .Id = CInt(reader("Id")),
                     .NumeroTransaccion = reader("NumeroTransaccion").ToString(),
-                    .ProductoId = CInt(reader("ProductoId")),
+                    .ProductoId = If(IsDBNull(reader("ProductoId")), 0, CInt(reader("ProductoId"))),
                     .SKU = reader("SKU").ToString(),
                     .NombreProducto = reader("NombreProducto").ToString(),
-                    .Cantidad = CInt(reader("Cantidad")),
-                    .PrecioUnitario = CDec(reader("PrecioUnitario")),
-                    .Total = CDec(reader("Total")),
-                    .GananciaTotal = CDec(reader("GananciaTotal")),
-                    .Cambio = CDec(reader("Cambio")),
-                    .MontoPagado = CDec(reader("MontoPagado")),
-                    .Fecha = CDate(reader("Fecha"))
+                    .Cantidad = If(IsDBNull(reader("Cantidad")), 0, CInt(reader("Cantidad"))),
+                    .PrecioUnitario = If(IsDBNull(reader("PrecioUnitario")), 0D, CDec(reader("PrecioUnitario"))),
+                    .Total = If(IsDBNull(reader("Total")), 0D, CDec(reader("Total"))),
+                    .GananciaTotal = If(IsDBNull(reader("GananciaTotal")), 0D, CDec(reader("GananciaTotal"))),
+                    .Cambio = If(IsDBNull(reader("Cambio")), 0D, CDec(reader("Cambio"))),
+                    .MontoPagado = If(IsDBNull(reader("MontoPagado")), 0D, CDec(reader("MontoPagado"))),
+                    .Fecha = If(IsDBNull(reader("Fecha")), DateTime.MinValue, CDate(reader("Fecha")))
                 }
                 transacciones.Add(transaccion)
             End While
@@ -66,8 +72,8 @@ Public Class TransaccionDAL
             cmd.Parameters.AddWithValue("@ff", fechaFin.ToString("yyyy-MM-dd"))
             
             Dim resultado = cmd.ExecuteScalar()
-            If resultado Is DBNull.Value Then
-                Return 0
+            If resultado Is DBNull.Value OrElse resultado Is Nothing Then
+                Return 0D
             Else
                 Return CDec(resultado)
             End If
