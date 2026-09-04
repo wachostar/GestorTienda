@@ -10,7 +10,11 @@ Public Class ProductoDAL
 
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
-            Using cmd As New SQLiteCommand("SELECT Id, SKU, Nombre, Descripcion, Categoria, CostoU, PrecioVenta, GananciaU, CantidadStock, FechaCreacion FROM Productos ORDER BY Nombre COLLATE NOCASE", conexion)
+            Using pragmaCmd As New SQLiteCommand("PRAGMA busy_timeout = 5000;", conexion)
+                pragmaCmd.ExecuteNonQuery()
+            End Using
+
+            Using cmd As New SQLiteCommand("SELECT Id, SKU, Nombre, Descripcion, Categoria, CostoU, PrecioVenta, GananciaU, CantidadStock, FechaCreacion FROM Productos ORDER BY Nombre", conexion)
                 Using reader = cmd.ExecuteReader()
                     While reader.Read()
                         Dim p As New Producto With {
@@ -37,12 +41,10 @@ Public Class ProductoDAL
     Public Shared Function ObtenerPorSKU(sku As String) As Producto
         If String.IsNullOrWhiteSpace(sku) Then Return Nothing
 
-        Dim skuNorm As String = sku.Trim().ToUpperInvariant()
-
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
             Using cmd As New SQLiteCommand("SELECT Id, SKU, Nombre, Descripcion, Categoria, CostoU, PrecioVenta, GananciaU, CantidadStock, FechaCreacion FROM Productos WHERE UPPER(SKU) = @sku LIMIT 1", conexion)
-                cmd.Parameters.AddWithValue("@sku", skuNorm)
+                cmd.Parameters.AddWithValue("@sku", sku.Trim().ToUpperInvariant())
                 Using reader = cmd.ExecuteReader()
                     If reader.Read() Then
                         Dim p As New Producto With {
@@ -68,56 +70,86 @@ Public Class ProductoDAL
 
     Public Shared Sub Agregar(producto As Producto)
         If producto Is Nothing Then Throw New ArgumentNullException(NameOf(producto))
-
-        ' Normalizar SKU a mayúsculas
-        producto.SKU = producto.SKU?.Trim().ToUpperInvariant()
-
-        ' Verificar duplicado
-        If ObtenerPorSKU(producto.SKU) IsNot Nothing Then
-            Throw New Exception("El SKU ya existe")
-        End If
+        If String.IsNullOrWhiteSpace(producto.SKU) Then Throw New ArgumentException("SKU es obligatorio")
 
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
             Using trans = conexion.BeginTransaction()
-                Dim sql As String = "INSERT INTO Productos (SKU, Nombre, Descripcion, Categoria, CostoU, PrecioVenta, GananciaU, CantidadStock, FechaCreacion) VALUES (@sku, @nom, @desc, @cat, @costo, @pv, @gan, @stk, @fecha)"
-                Using cmd As New SQLiteCommand(sql, conexion, trans)
-                    cmd.Parameters.AddWithValue("@sku", producto.SKU)
-                    cmd.Parameters.AddWithValue("@nom", producto.Nombre)
-                    cmd.Parameters.AddWithValue("@desc", producto.Descripcion)
-                    cmd.Parameters.AddWithValue("@cat", producto.Categoria)
-                    cmd.Parameters.AddWithValue("@costo", producto.CostoUnitario)
-                    cmd.Parameters.AddWithValue("@pv", producto.PrecioVenta)
-                    cmd.Parameters.AddWithValue("@gan", producto.GananciaUnitaria)
-                    cmd.Parameters.AddWithValue("@stk", producto.CantidadStock)
-                    cmd.Parameters.AddWithValue("@fecha", If(producto.FechaCreacion = DateTime.MinValue, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), producto.FechaCreacion.ToString("yyyy-MM-dd HH:mm:ss")))
+                Try
+                    ' Verificar duplicado por SKU
+                    Using cmdCheck As New SQLiteCommand("SELECT COUNT(1) FROM Productos WHERE UPPER(SKU) = @sku", conexion, trans)
+                        cmdCheck.Parameters.AddWithValue("@sku", producto.SKU.Trim().ToUpperInvariant())
+                        Dim count = Convert.ToInt32(cmdCheck.ExecuteScalar())
+                        If count > 0 Then
+                            Throw New Exception("El SKU ya existe")
+                        End If
+                    End Using
 
-                    cmd.ExecuteNonQuery()
-                End Using
-                trans.Commit()
+                    Dim sql As String = "INSERT INTO Productos (SKU, Nombre, Descripcion, Categoria, CostoU, PrecioVenta, GananciaU, CantidadStock, FechaCreacion) VALUES (@sku, @nombre, @desc, @cat, @costo, @precio, @gan, @stock, @fecha)"
+                    Using cmd As New SQLiteCommand(sql, conexion, trans)
+                        cmd.Parameters.AddWithValue("@sku", producto.SKU.Trim().ToUpperInvariant())
+                        cmd.Parameters.AddWithValue("@nombre", producto.Nombre)
+                        cmd.Parameters.AddWithValue("@desc", If(producto.Descripcion, String.Empty))
+                        cmd.Parameters.AddWithValue("@cat", If(producto.Categoria, String.Empty))
+                        cmd.Parameters.AddWithValue("@costo", producto.CostoUnitario)
+                        cmd.Parameters.AddWithValue("@precio", producto.PrecioVenta)
+                        cmd.Parameters.AddWithValue("@gan", producto.GananciaUnitaria)
+                        cmd.Parameters.AddWithValue("@stock", producto.CantidadStock)
+                        cmd.Parameters.AddWithValue("@fecha", If(producto.FechaCreacion = DateTime.MinValue, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), producto.FechaCreacion.ToString("yyyy-MM-dd HH:mm:ss")))
+
+                        cmd.ExecuteNonQuery()
+                    End Using
+
+                    trans.Commit()
+                    Logger.Info($"Producto agregado: {producto.SKU}")
+                Catch ex As Exception
+                    Try
+                        trans.Rollback()
+                    Catch
+                    End Try
+                    Logger.Error("Error en ProductoDAL.Agregar: " & ex.ToString())
+                    Throw
+                End Try
             End Using
             conexion.Close()
         End Using
     End Sub
 
     Public Shared Sub Actualizar(producto As Producto)
+        If producto Is Nothing Then Throw New ArgumentNullException(NameOf(producto))
+
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
             Using trans = conexion.BeginTransaction()
-                Dim sql As String = "UPDATE Productos SET Nombre = @nom, Descripcion = @desc, Categoria = @cat, CostoU = @costo, PrecioVenta = @pv, GananciaU = @gan, CantidadStock = @stk WHERE Id = @id"
-                Using cmd As New SQLiteCommand(sql, conexion, trans)
-                    cmd.Parameters.AddWithValue("@nom", producto.Nombre)
-                    cmd.Parameters.AddWithValue("@desc", producto.Descripcion)
-                    cmd.Parameters.AddWithValue("@cat", producto.Categoria)
-                    cmd.Parameters.AddWithValue("@costo", producto.CostoUnitario)
-                    cmd.Parameters.AddWithValue("@pv", producto.PrecioVenta)
-                    cmd.Parameters.AddWithValue("@gan", producto.GananciaUnitaria)
-                    cmd.Parameters.AddWithValue("@stk", producto.CantidadStock)
-                    cmd.Parameters.AddWithValue("@id", producto.Id)
+                Try
+                    Dim sql As String = "UPDATE Productos SET SKU = @sku, Nombre = @nombre, Descripcion = @desc, Categoria = @cat, CostoU = @costo, PrecioVenta = @precio, GananciaU = @gan, CantidadStock = @stock WHERE Id = @id"
+                    Using cmd As New SQLiteCommand(sql, conexion, trans)
+                        cmd.Parameters.AddWithValue("@sku", producto.SKU.Trim().ToUpperInvariant())
+                        cmd.Parameters.AddWithValue("@nombre", producto.Nombre)
+                        cmd.Parameters.AddWithValue("@desc", If(producto.Descripcion, String.Empty))
+                        cmd.Parameters.AddWithValue("@cat", If(producto.Categoria, String.Empty))
+                        cmd.Parameters.AddWithValue("@costo", producto.CostoUnitario)
+                        cmd.Parameters.AddWithValue("@precio", producto.PrecioVenta)
+                        cmd.Parameters.AddWithValue("@gan", producto.GananciaUnitaria)
+                        cmd.Parameters.AddWithValue("@stock", producto.CantidadStock)
+                        cmd.Parameters.AddWithValue("@id", producto.Id)
 
-                    cmd.ExecuteNonQuery()
-                End Using
-                trans.Commit()
+                        Dim rows = cmd.ExecuteNonQuery()
+                        If rows = 0 Then
+                            Throw New Exception($"Producto con Id {producto.Id} no encontrado para actualizar")
+                        End If
+                    End Using
+
+                    trans.Commit()
+                    Logger.Info($"Producto actualizado: {producto.SKU} (Id={producto.Id})")
+                Catch ex As Exception
+                    Try
+                        trans.Rollback()
+                    Catch
+                    End Try
+                    Logger.Error("Error en ProductoDAL.Actualizar: " & ex.ToString())
+                    Throw
+                End Try
             End Using
             conexion.Close()
         End Using
@@ -126,21 +158,38 @@ Public Class ProductoDAL
     Public Shared Sub Eliminar(id As Integer)
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
-            Using cmd As New SQLiteCommand("DELETE FROM Productos WHERE Id = @id", conexion)
-                cmd.Parameters.AddWithValue("@id", id)
-                cmd.ExecuteNonQuery()
+            Using trans = conexion.BeginTransaction()
+                Try
+                    Using cmd As New SQLiteCommand("DELETE FROM Productos WHERE Id = @id", conexion, trans)
+                        cmd.Parameters.AddWithValue("@id", id)
+                        Dim rows = cmd.ExecuteNonQuery()
+                        If rows = 0 Then
+                            Throw New Exception($"Producto con Id {id} no encontrado para eliminar")
+                        End If
+                    End Using
+
+                    trans.Commit()
+                    Logger.Info($"Producto eliminado. Id={id}")
+                Catch ex As Exception
+                    Try
+                        trans.Rollback()
+                    Catch
+                    End Try
+                    Logger.Error("Error en ProductoDAL.Eliminar: " & ex.ToString())
+                    Throw
+                End Try
             End Using
             conexion.Close()
         End Using
     End Sub
 
-    Public Shared Function ObtenerStockCritico(threshold As Integer) As List(Of Producto)
+    Public Shared Function ObtenerStockCritico(limite As Integer) As List(Of Producto)
         Dim list As New List(Of Producto)()
 
         Using conexion As New SQLiteConnection(ConfiguracionDB.ObtenerConexion())
             conexion.Open()
-            Using cmd As New SQLiteCommand("SELECT Id, SKU, Nombre, Descripcion, Categoria, CostoU, PrecioVenta, GananciaU, CantidadStock, FechaCreacion FROM Productos WHERE CantidadStock <= @th ORDER BY CantidadStock ASC", conexion)
-                cmd.Parameters.AddWithValue("@th", threshold)
+            Using cmd As New SQLiteCommand("SELECT Id, SKU, Nombre, Descripcion, Categoria, CostoU, PrecioVenta, GananciaU, CantidadStock, FechaCreacion FROM Productos WHERE CantidadStock <= @limite ORDER BY CantidadStock ASC", conexion)
+                cmd.Parameters.AddWithValue("@limite", limite)
                 Using reader = cmd.ExecuteReader()
                     While reader.Read()
                         Dim p As New Producto With {
